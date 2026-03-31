@@ -28,6 +28,7 @@ from mujoco_playground._src.manipulation.franka_emika_panda import pick_cartesia
 from mujoco_playground._src.manipulation.franka_emika_panda_robotiq import push_cube as robotiq_push_cube
 from mujoco_playground._src.manipulation.leap_hand import reorient as leap_cube_reorient
 from mujoco_playground._src.manipulation.leap_hand import rotate_z as leap_rotate_z
+from mujoco_playground._src.manipulation.leap_hand import rotate_z_touch as leap_rotate_z_touch
 from mujoco_playground._src.manipulation.aero_hand import rotate_z as aero_hand_rotate_z
 
 _envs = {
@@ -40,6 +41,7 @@ _envs = {
     "PandaRobotiqPushCube": robotiq_push_cube.PandaRobotiqPushCube,
     "LeapCubeReorient": leap_cube_reorient.CubeReorient,
     "LeapCubeRotateZAxis": leap_rotate_z.CubeRotateZAxis,
+    "LeapCubeRotateZAxisTouch": leap_rotate_z_touch.CubeRotateZAxisTouch,
     "AeroCubeRotateZAxis": aero_hand_rotate_z.CubeRotateZAxis,
 }
 
@@ -53,14 +55,41 @@ _cfgs = {
     "PandaRobotiqPushCube": robotiq_push_cube.default_config,
     "LeapCubeReorient": leap_cube_reorient.default_config,
     "LeapCubeRotateZAxis": leap_rotate_z.default_config,
+    "LeapCubeRotateZAxisTouch": leap_rotate_z_touch.default_config,
     "AeroCubeRotateZAxis": aero_hand_rotate_z.default_config,
 }
 
 _randomizer = {
     "LeapCubeRotateZAxis": leap_rotate_z.domain_randomize,
+    "LeapCubeRotateZAxisTouch": leap_rotate_z_touch.domain_randomize,
     "LeapCubeReorient": leap_cube_reorient.domain_randomize,
     "AeroCubeRotateZAxis": aero_hand_rotate_z.domain_randomize,
 }
+
+
+_touch_mask_envs_registered = False
+
+
+def register_rotation_environments_with_masks(mask_path: str):
+  """Register touch sensor mask environments from a sensor_masks.json file.
+
+  Creates LeapCubeRotateZAxisTouchMask1..N environments, one per mask
+  in the JSON file. Must be called before loading mask environments.
+  """
+  global _touch_mask_envs_registered
+  if _touch_mask_envs_registered:
+    return
+  _touch_mask_envs_registered = True
+
+  leap_rotate_z_touch._create_touch_mask_classes(mask_path)
+
+  import inspect
+  for name, obj in inspect.getmembers(leap_rotate_z_touch):
+    if name.startswith("CubeRotateZAxisTouchMask") and inspect.isclass(obj):
+      env_name = f"Leap{name}"
+      _envs[env_name] = obj
+      _cfgs[env_name] = leap_rotate_z_touch.default_config
+      _randomizer[env_name] = leap_rotate_z_touch.domain_randomize
 
 
 def __getattr__(name):

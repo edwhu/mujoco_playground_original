@@ -99,6 +99,9 @@ _USE_TB = flags.DEFINE_boolean(
 _DOMAIN_RANDOMIZATION = flags.DEFINE_boolean(
     "domain_randomization", False, "Use domain randomization"
 )
+_MASK_PATH = flags.DEFINE_string(
+    "mask_path", None, "Path to sensor masks JSON file for touch environments"
+)
 _SEED = flags.DEFINE_integer("seed", 1, "Random seed")
 _NUM_TIMESTEPS = flags.DEFINE_integer(
     "num_timesteps", 1_000_000, "Number of timesteps"
@@ -225,6 +228,12 @@ def main(argv):
   if _WARP_KERNEL_CACHE_DIR.value is not None:
     import warp as wp  # pylint: disable=g-import-not-at-top
     wp.config.kernel_cache_dir = _WARP_KERNEL_CACHE_DIR.value
+
+  # Register touch mask environments if mask_path is provided.
+  if _MASK_PATH.value is not None:
+    mujoco_playground.manipulation.register_rotation_environments_with_masks(
+        _MASK_PATH.value
+    )
 
   # Load environment configuration
   env_cfg = registry.get_default_config(_ENV_NAME.value)

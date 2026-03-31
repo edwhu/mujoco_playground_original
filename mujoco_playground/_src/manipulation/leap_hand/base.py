@@ -27,6 +27,50 @@ from mujoco_playground._src import mjx_env
 from mujoco_playground._src.manipulation.leap_hand import leap_hand_constants as consts
 
 
+def load_fixed_masks(mask_path):
+  """Load fixed masks from sensor_masks.json and convert to JAX arrays.
+
+  Supports two JSON formats:
+    1. Compact: {"mask1": "010101...", ...} — bitstrings
+    2. Hierarchical: {"2_sensors": {"tips": [0,0,1,...], ...}, ...}
+
+  Returns:
+    Tuple of (all_masks, mask_names) where all_masks is a list of JAX
+    boolean arrays and mask_names is a list of corresponding names.
+  """
+  import json
+
+  with open(mask_path, 'r') as f:
+    masks_data = json.load(f)
+
+  def _flatten_masks(data):
+    masks = []
+    names = []
+    for category, category_masks in data.items():
+      if category == "metadata":
+        continue
+      for mask_name, mask_values in category_masks.items():
+        masks.append(jp.array(mask_values, dtype=jp.bool_))
+        names.append(f"{category}_{mask_name}")
+    return masks, names
+
+  # Detect compact bitstring format
+  is_compact = isinstance(masks_data, dict) and len(masks_data) > 0 and all(
+      isinstance(v, str) and all(ch in "01" for ch in v)
+      for v in masks_data.values()
+  )
+
+  if is_compact:
+    converted = {"imported": {}}
+    for name, bitstring in masks_data.items():
+      converted["imported"][name] = [1 if ch == '1' else 0 for ch in bitstring]
+    all_masks, mask_names = _flatten_masks(converted)
+  else:
+    all_masks, mask_names = _flatten_masks(masks_data)
+
+  return all_masks, mask_names
+
+
 def get_assets() -> Dict[str, bytes]:
   assets = {}
   path = mjx_env.MENAGERIE_PATH / "leap_hand"
@@ -97,6 +141,30 @@ class LeapHandEnv(mjx_env.MjxEnv):
         mjx_env.get_sensor_data(self.mj_model, data, f"{name}_position")
         for name in consts.FINGERTIP_NAMES
     ])
+
+  # Touch sensor methods.
+
+  def get_touch_sensors(self, data: mjx.Data) -> jax.Array:
+    """Get binarized touch sensor data (20 dims)."""
+    touch = jp.concatenate([
+        mjx_env.get_sensor_data(self.mj_model, data, name)
+        for name in consts.TOUCH_SENSOR_NAMES
+    ])
+    return (touch > 0.0).astype(jp.float32)
+
+  def generate_episode_touch_mask(
+      self,
+      info: dict,
+      fixed_mask=None,
+  ) -> jax.Array:
+    """Generate touch mask for an episode.
+
+    Returns a 20-dim boolean mask. If fixed_mask is provided, uses that;
+    otherwise returns all-ones (all sensors active).
+    """
+    if fixed_mask is not None:
+      return fixed_mask
+    return jp.ones(len(consts.TOUCH_SENSOR_NAMES), dtype=jp.bool_)
 
   # Accessors.
 
