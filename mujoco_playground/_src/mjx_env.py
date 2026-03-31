@@ -140,9 +140,17 @@ def make_data(
     njmax: Optional[int] = None,
     device: Optional[jax.Device] = None,
 ) -> mjx.Data:
-  """Initialize MJX Data."""
+  """Initialize MJX Data.
+
+  `naconmax` is forwarded as `nconmax` to `mjx.make_data` (legacy name in configs).
+  `naccdmax` is accepted for API compatibility but not passed; current MJX
+  `make_data` only takes `nconmax` and `njmax` (Warp allocation hints).
+  """
   data = mjx.make_data(
-      model, impl=impl, naconmax=naconmax, naccdmax=naccdmax, njmax=njmax,
+      model,
+      impl=impl,
+      nconmax=naconmax if naconmax is not None else -1,
+      njmax=njmax if njmax is not None else -1,
       device=device,
   )
   if qpos is not None:

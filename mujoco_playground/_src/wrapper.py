@@ -144,8 +144,15 @@ class BraxAutoResetWrapper(Wrapper):
     self._info_key = 'AutoResetWrapper'
 
   def reset(self, rng: jax.Array) -> mjx_env.State:
-    rng_key = jax.vmap(jax.random.split)(rng)
-    rng, key = rng_key[..., 0], rng_key[..., 1]
+    # PPO passes keys with an outer vmap, so each inner reset sees shape (2,)
+    # (one key). Using vmap(split) on that wrongly treats the key's two words as
+    # a batch axis. Batched calls from eval use shape (batch, 2).
+    if rng.ndim == 1:
+      rng_key = jax.random.split(rng, 2)
+      rng, key = rng_key[0], rng_key[1]
+    else:
+      rng_key = jax.vmap(jax.random.split)(rng)
+      rng, key = rng_key[..., 0], rng_key[..., 1]
     state = self.env.reset(key)
     state.info[f'{self._info_key}_first_data'] = state.data
     state.info[f'{self._info_key}_first_obs'] = state.obs
@@ -158,8 +165,13 @@ class BraxAutoResetWrapper(Wrapper):
   def step(self, state: mjx_env.State, action: jax.Array) -> mjx_env.State:
     # grab the reset state.
     reset_state = None
-    rng_key = jax.vmap(jax.random.split)(state.info[f'{self._info_key}_rng'])
-    reset_rng, reset_key = rng_key[..., 0], rng_key[..., 1]
+    rng = state.info[f'{self._info_key}_rng']
+    if rng.ndim == 1:
+      rng_key = jax.random.split(rng, 2)
+      reset_rng, reset_key = rng_key[0], rng_key[1]
+    else:
+      rng_key = jax.vmap(jax.random.split)(rng)
+      reset_rng, reset_key = rng_key[..., 0], rng_key[..., 1]
     if self._full_reset:
       reset_state = self.reset(reset_key)
       reset_data = reset_state.data
