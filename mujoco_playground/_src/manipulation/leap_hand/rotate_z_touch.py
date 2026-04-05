@@ -27,7 +27,9 @@ from mujoco_playground._src.manipulation.leap_hand import base as leap_hand_base
 from mujoco_playground._src.manipulation.leap_hand import leap_hand_constants as consts
 
 _NUM_TOUCH = len(consts.TOUCH_SENSOR_NAMES)  # 20
-_STATE_DIM = 32 + _NUM_TOUCH + _NUM_TOUCH  # 72: joints(16) + act(16) + touch(20) + mask(20)
+_STATE_DIM = 32 + _NUM_TOUCH + _NUM_TOUCH  # 72: legacy constant, not used in reset()
+
+TOUCH_SENSOR_NOISE_PCT_LEVELS = (0, 10, 15, 20, 25, 50)
 
 
 def default_config() -> config_dict.ConfigDict:
@@ -70,14 +72,38 @@ class CubeRotateZAxisTouch(leap_hand_base.LeapHandEnv):
       config: config_dict.ConfigDict = default_config(),
       config_overrides: Optional[Dict[str, Union[str, int, list[Any]]]] = None,
       fixed_mask: Optional[jax.Array] = None,
+      touch_sensor_noise_prob: float = 0.0,
+      finger_noise_prob: float = 0.0,  # Per-step dropout for finger/thumb sensors (indices 5-19)
   ):
     self._fixed_mask = fixed_mask
+    self._touch_sensor_noise_prob = touch_sensor_noise_prob
+    self._finger_noise_prob = finger_noise_prob
     super().__init__(
         xml_path=consts.CUBE_TOUCH_XML.as_posix(),
         config=config,
         config_overrides=config_overrides,
     )
     self._post_init()
+
+    # Static numpy array of active sensor indices (shape known at construction time).
+    if fixed_mask is not None:
+      self._active_touch_indices = np.where(np.array(fixed_mask))[0]
+    else:
+      self._active_touch_indices = np.arange(_NUM_TOUCH)
+
+    # Instance-level state dim: 32 (joints+act) + K (active touch channels).
+    self._state_dim = 32 + len(self._active_touch_indices)
+
+    # Per-active-sensor noise probability vector (shape: (K,)).
+    # Full 20-sensor array: palm (0-4) get touch_sensor_noise_prob, finger/thumb (5-19) get finger_noise_prob.
+    # Indexed by _active_touch_indices so shape matches active_touch in _get_obs.
+    _full_noise_probs = np.concatenate([
+        np.full(8, touch_sensor_noise_prob),   # palm sensors 0-7
+        np.full(12, max(touch_sensor_noise_prob, finger_noise_prob)),  # finger/thumb 8-19
+    ])
+    self._per_active_sensor_noise_probs = jp.array(
+        _full_noise_probs[self._active_touch_indices]
+    )
 
   def _post_init(self) -> None:
     self._hand_qids = mjx_env.get_qpos_ids(self.mj_model, consts.JOINT_NAMES)
@@ -139,7 +165,7 @@ class CubeRotateZAxisTouch(leap_hand_base.LeapHandEnv):
     for k in self._config.reward_config.scales.keys():
       metrics[f"reward/{k}"] = jp.zeros(())
 
-    obs_history = jp.zeros(self._config.history_len * _STATE_DIM)
+    obs_history = jp.zeros(self._config.history_len * self._state_dim)
     obs = self._get_obs(data, info, obs_history)
     reward, done = jp.zeros(2)
     return mjx_env.State(data, obs, reward, done, metrics, info)
@@ -186,17 +212,25 @@ class CubeRotateZAxisTouch(leap_hand_base.LeapHandEnv):
         * self._config.noise_config.scales.joint_pos
     )
 
-    # Touch sensors: binarized and masked.
+    # Touch sensors: select only the K active channels by static index.
     touch_data = self.get_touch_sensors(data)
-    touch_mask = info["episode_touch_mask"]
-    masked_touch = touch_data * touch_mask
+    active_touch = touch_data[self._active_touch_indices]  # K dims, static shape
+
+    # Per-step i.i.d. Bernoulli dropout: zero each active reading with prob p.
+    # Uses per-sensor probabilities: palm (0-4) at touch_sensor_noise_prob,
+    # finger/thumb (5-19) at finger_noise_prob (pre-indexed to active sensors).
+    if self._touch_sensor_noise_prob > 0.0 or self._finger_noise_prob > 0.0:
+      info["rng"], noise_rng = jax.random.split(info["rng"])
+      keep = (1.0 - jax.random.bernoulli(
+          noise_rng, self._per_active_sensor_noise_probs, active_touch.shape
+      ).astype(jp.float32))
+      active_touch = active_touch * keep
 
     state = jp.concatenate([
         noisy_joint_angles,  # 16
         info["last_act"],  # 16
-        masked_touch,  # 20
-        touch_mask.astype(jp.float32),  # 20
-    ])  # 72
+        active_touch,  # K
+    ])  # 32 + K
     obs_history = jp.roll(obs_history, state.size)
     obs_history = obs_history.at[: state.size].set(state)
 
@@ -423,7 +457,12 @@ def domain_randomize(model: mjx.Model, rng: jax.Array):
   return model, in_axes
 
 
-def create_mask_class(class_name: str, fixed_mask: jax.Array):
+def create_mask_class(
+    class_name: str,
+    fixed_mask: jax.Array,
+    touch_sensor_noise_prob: float = 0.0,
+    finger_noise_prob: float = 0.0,
+):
   """Create a CubeRotateZAxisTouch subclass with a baked-in fixed mask."""
 
   def __init__(
@@ -437,21 +476,46 @@ def create_mask_class(class_name: str, fixed_mask: jax.Array):
         config=config,
         config_overrides=config_overrides,
         fixed_mask=fixed_mask,
+        touch_sensor_noise_prob=touch_sensor_noise_prob,
+        finger_noise_prob=finger_noise_prob,
     )
 
+  noise_str = (f" and {touch_sensor_noise_prob * 100:.0f}% sensor dropout."
+               if touch_sensor_noise_prob > 0.0 else ".")
+  finger_str = (f" and {finger_noise_prob * 100:.0f}% finger sensor dropout."
+                if finger_noise_prob > 0.0 else "")
   cls = type(class_name, (CubeRotateZAxisTouch,), {
       "__init__": __init__,
-      "__doc__": f"Rotate z-axis with touch sensors using fixed mask.",
+      "__doc__": f"Rotate z-axis with touch sensors using fixed mask{noise_str}{finger_str}",
       "__module__": __name__,
   })
   return cls
 
 
 def _create_touch_mask_classes(mask_path: str):
-  """Load masks from JSON and create CubeRotateZAxisTouchMask1..N classes."""
+  """Load masks from JSON and create CubeRotateZAxisTouchMask1..N classes,
+  plus noise-level variants CubeRotateZAxisTouchMask{N}Noise{PCT}."""
   all_masks, mask_names = leap_hand_base.load_fixed_masks(mask_path)
   globals_dict = globals()
   for idx, mask in enumerate(all_masks):
-    class_name = f"CubeRotateZAxisTouchMask{idx + 1}"
-    cls = create_mask_class(class_name, mask)
-    globals_dict[class_name] = cls
+    mask_n = idx + 1
+    # Base mask class (no noise).
+    class_name = f"CubeRotateZAxisTouchMask{mask_n}"
+    globals_dict[class_name] = create_mask_class(class_name, mask, 0.0)
+
+    # Noise-level variants.
+    for pct in TOUCH_SENSOR_NOISE_PCT_LEVELS:
+      if pct == 0:
+        continue
+      noise_class_name = f"CubeRotateZAxisTouchMask{mask_n}Noise{pct}"
+      globals_dict[noise_class_name] = create_mask_class(
+          noise_class_name, mask, pct / 100.0
+      )
+
+    # FingerNoise variant: palm (0-4) 0% noise, finger/thumb (5-19) 95% noise.
+    finger_noise_class_name = f"CubeRotateZAxisTouchMask{mask_n}FingerNoise"
+    globals_dict[finger_noise_class_name] = create_mask_class(
+        finger_noise_class_name, mask,
+        touch_sensor_noise_prob=0.0,
+        finger_noise_prob=0.9,
+    )
