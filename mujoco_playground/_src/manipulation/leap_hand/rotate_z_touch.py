@@ -27,6 +27,7 @@ from mujoco_playground._src.manipulation.leap_hand import base as leap_hand_base
 from mujoco_playground._src.manipulation.leap_hand import leap_hand_constants as consts
 
 _NUM_TOUCH = len(consts.TOUCH_SENSOR_NAMES)  # 20
+_NUM_PALM_TOUCH = 8
 _STATE_DIM = 32 + _NUM_TOUCH + _NUM_TOUCH  # 72: legacy constant, not used in reset()
 
 TOUCH_SENSOR_NOISE_PCT_LEVELS = (0, 10, 15, 20, 25, 50)
@@ -73,11 +74,13 @@ class CubeRotateZAxisTouch(leap_hand_base.LeapHandEnv):
       config_overrides: Optional[Dict[str, Union[str, int, list[Any]]]] = None,
       fixed_mask: Optional[jax.Array] = None,
       touch_sensor_noise_prob: float = 0.0,
-      finger_noise_prob: float = 0.0,  # Per-step dropout for finger/thumb sensors (indices 5-19)
+      finger_noise_prob: float = 0.0,  # Per-step dropout for finger/thumb sensors (indices 8-19)
+      non_palm_touch_threshold: float = 10.0,
   ):
     self._fixed_mask = fixed_mask
     self._touch_sensor_noise_prob = touch_sensor_noise_prob
     self._finger_noise_prob = finger_noise_prob
+    self._non_palm_touch_threshold = non_palm_touch_threshold
     super().__init__(
         xml_path=consts.CUBE_TOUCH_XML.as_posix(),
         config=config,
@@ -95,10 +98,10 @@ class CubeRotateZAxisTouch(leap_hand_base.LeapHandEnv):
     self._state_dim = 32 + len(self._active_touch_indices)
 
     # Per-active-sensor noise probability vector (shape: (K,)).
-    # Full 20-sensor array: palm (0-4) get touch_sensor_noise_prob, finger/thumb (5-19) get finger_noise_prob.
+    # Full 20-sensor array: palm (0-7) get touch_sensor_noise_prob, finger/thumb (8-19) get finger_noise_prob.
     # Indexed by _active_touch_indices so shape matches active_touch in _get_obs.
     _full_noise_probs = np.concatenate([
-        np.full(8, touch_sensor_noise_prob),   # palm sensors 0-7
+        np.full(_NUM_PALM_TOUCH, touch_sensor_noise_prob),   # palm sensors 0-7
         np.full(12, max(touch_sensor_noise_prob, finger_noise_prob)),  # finger/thumb 8-19
     ])
     self._per_active_sensor_noise_probs = jp.array(
@@ -200,6 +203,18 @@ class CubeRotateZAxisTouch(leap_hand_base.LeapHandEnv):
     fall_termination = self.get_cube_position(data)[2] < -0.05
     return fall_termination
 
+  def _get_touch_sensors_thresholded(self, data: mjx.Data) -> jax.Array:
+    """Get touch sensor data with stricter thresholding on non-palm sensors."""
+    touch = jp.concatenate([
+        mjx_env.get_sensor_data(self.mj_model, data, name)
+        for name in consts.TOUCH_SENSOR_NAMES
+    ])
+    palm_touch = (touch[:_NUM_PALM_TOUCH] > 0.0).astype(jp.float32)
+    non_palm_touch = (touch[_NUM_PALM_TOUCH:] > self._non_palm_touch_threshold).astype(
+        jp.float32
+    )
+    return jp.concatenate([palm_touch, non_palm_touch])
+
   def _get_obs(
       self, data: mjx.Data, info: dict[str, Any], obs_history: jax.Array
   ) -> Dict[str, jax.Array]:
@@ -213,12 +228,12 @@ class CubeRotateZAxisTouch(leap_hand_base.LeapHandEnv):
     )
 
     # Touch sensors: select only the K active channels by static index.
-    touch_data = self.get_touch_sensors(data)
+    touch_data = self._get_touch_sensors_thresholded(data)
     active_touch = touch_data[self._active_touch_indices]  # K dims, static shape
 
     # Per-step i.i.d. Bernoulli dropout: zero each active reading with prob p.
-    # Uses per-sensor probabilities: palm (0-4) at touch_sensor_noise_prob,
-    # finger/thumb (5-19) at finger_noise_prob (pre-indexed to active sensors).
+    # Uses per-sensor probabilities: palm (0-7) at touch_sensor_noise_prob,
+    # finger/thumb (8-19) at finger_noise_prob (pre-indexed to active sensors).
     if self._touch_sensor_noise_prob > 0.0 or self._finger_noise_prob > 0.0:
       info["rng"], noise_rng = jax.random.split(info["rng"])
       keep = (1.0 - jax.random.bernoulli(

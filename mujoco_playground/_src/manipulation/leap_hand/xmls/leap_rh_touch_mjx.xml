@@ -19,6 +19,7 @@
     <!-- original path, incorrect. -->
     <!-- <mesh name="palm" file="../../../../../mujoco_menagerie/leap_hand/assets/palm_right.obj"/> -->
     <!-- correct path -->
+    <!-- For Mujoco Viewer debugging, temporarily switch these mesh file paths to absolute paths. -->
     <mesh name="palm" file="../../../../external_deps/mujoco_menagerie/leap_hand/assets/palm_right.obj"/>
     <mesh name="base" file="../../../../external_deps/mujoco_menagerie/leap_hand/assets/base.obj"/>
     <mesh name="proximal" file="../../../../external_deps/mujoco_menagerie/leap_hand/assets/proximal.obj"/>
@@ -173,7 +174,7 @@
             <geom name="if_px_visual" pos="0.0096 0.0002 0.0007" quat="0.500003 -0.5 -0.5 -0.499997" class="visual"
               mesh="proximal"/>
             <geom name="if_px_collision" size="0.017 0.013 0.011" pos="0.0075 -0.0002 -0.011" type="box"/>
-            <site name="if_px_touch" type="box" size="0.015 0.01 0.005" pos="0.0075 -0.0002 -0.02" rgba="1 0 0 0.33"/>
+            <site name="if_px_touch" type="box" size="0.0075 0.005 0.0025" pos="0.0075 -0.0002 -0.02" rgba="1 0 0 0.33"/>
 
             <body name="if_md" pos="0.015 0.0143 -0.013" quat="0.500003 0.5 -0.5 0.499997">
               <inertial pos="0.0054215 -0.029148 0.015" quat="0.687228 0.687228 0.166487 0.166487" mass="0.037"
@@ -183,7 +184,7 @@
                 mesh="medial"/>
               <geom name="if_md_collision_1" size="0.008 0.003 0.013" pos="0 -0.02 0.015" type="box"/>
               <geom name="if_md_collision_5" size="0.017 0.011 0.013" pos="0.0075 -0.035 0.015" type="box"/>
-              <site name="if_md_touch" type="box" pos="-0.0075 -0.035 0.015" size="0.005 0.01 0.01" rgba="1 0 0 0.33"/>
+              <site name="if_md_touch" type="box" pos="-0.0075 -0.035 0.015" size="0.0025 0.005 0.005" rgba="1 0 0 0.33"/>
               <body name="if_ds" pos="0 -0.0361 0.0002">
                 <inertial pos="-0.0008794 -0.027019 0.014594" quat="0.702905 0.710643 -0.0212937 -0.0214203"
                   mass="0.016" diaginertia="3.71863e-06 3.02396e-06 1.6518e-06"/>
@@ -194,7 +195,7 @@
                 <geom name="if_tip" class="tip"/>
                 <geom type="mesh" mesh="tip" class="visual" material="gray"/>
                 <site name="if_tip" pos="0 -0.05 0.015" group="4" />
-                <site name="if_tip_touch" type="sphere" pos="-0.01 -0.03 0.015" size="0.01" rgba="1 1 0 0.33"/>
+                <site name="if_tip_touch" type="sphere" pos="-0.01 -0.03 0.015" size="0.005" rgba="1 1 0 0.33"/>
               </body>
             </body>
           </body>
@@ -212,7 +213,7 @@
             <geom name="mf_px_visual" pos="0.0096 0.0003 0.0007" quat="0.500003 -0.5 -0.5 -0.499997" class="visual"
               mesh="proximal"/>
             <geom name="mf_px_collision" size="0.017 0.013 0.011" pos="0.0075 -0.0002 -0.011" type="box"/>
-            <site name="mf_px_touch" type="box" size="0.015 0.01 0.005" pos="0.0075 -0.0002 -0.02" rgba="1 0 0 0.33"/>
+            <site name="mf_px_touch" type="box" size="0.0075 0.005 0.0025" pos="0.0075 -0.0002 -0.02" rgba="1 0 0 0.33"/>
             <body name="mf_md" pos="0.015 0.0143 -0.013" quat="0.500003 0.5 -0.5 0.499997">
               <inertial pos="0.0054215 -0.029148 0.015" quat="0.687228 0.687228 0.166487 0.166487" mass="0.037"
                 diaginertia="8.28004e-06 8.1598e-06 5.39516e-06"/>
@@ -221,7 +222,7 @@
                 mesh="medial"/>
               <geom name="mf_md_collision_1" size="0.008 0.003 0.013" pos="0 -0.02 0.015" type="box"/>
               <geom name="mf_md_collision_5" size="0.017 0.011 0.013" pos="0.0075 -0.035 0.015" type="box"/>
-              <site name="mf_md_touch" type="box" pos="-0.0075 -0.035 0.015" size="0.005 0.01 0.01" rgba="1 0 0 0.33"/>
+              <site name="mf_md_touch" type="box" pos="-0.0075 -0.035 0.015" size="0.0025 0.005 0.005" rgba="1 0 0 0.33"/>
               <body name="mf_ds" pos="0 -0.0361 0.0002">
                 <inertial pos="-0.0008794 -0.027019 0.014594" quat="0.702905 0.710643 -0.0212937 -0.0214203"
                   mass="0.016" diaginertia="3.71863e-06 3.02396e-06 1.6518e-06"/>
@@ -232,7 +233,7 @@
                 <geom name="mf_tip" class="tip"/>
                 <geom type="mesh" mesh="tip" class="visual" material="gray"/>
                 <site name="mf_tip" pos="0 -0.05 0.015" group="4"/>
-                <site name="mf_tip_touch" type="sphere" pos="-0.01 -0.03 0.015" size="0.01" rgba="1 1 0 0.33"/>
+                <site name="mf_tip_touch" type="sphere" pos="-0.01 -0.03 0.015" size="0.005" rgba="1 1 0 0.33"/>
               </body>
             </body>
           </body>
@@ -250,7 +251,7 @@
             <geom name="rf_px_visual" pos="0.0096 0.0003 0.0007" quat="0.500003 -0.5 -0.5 -0.499997" class="visual"
               mesh="proximal"/>
             <geom name="rf_px_collision" size="0.017 0.013 0.011" pos="0.0075 -0.0002 -0.011" type="box"/>
-            <site name="rf_px_touch" type="box" size="0.015 0.01 0.005" pos="0.0075 -0.0002 -0.02" rgba="1 0 0 0.33"/>
+            <site name="rf_px_touch" type="box" size="0.0075 0.005 0.0025" pos="0.0075 -0.0002 -0.02" rgba="1 0 0 0.33"/>
             <body name="rf_md" pos="0.015 0.0143 -0.013" quat="0.500003 0.5 -0.5 0.499997">
               <inertial pos="0.0054215 -0.029148 0.015" quat="0.687228 0.687228 0.166487 0.166487" mass="0.037"
                 diaginertia="8.28004e-06 8.1598e-06 5.39516e-06"/>
@@ -258,7 +259,7 @@
               <geom name="rf_md_visual" pos="0.0211 -0.0084 0.0097" quat="0 -1 0 0" class="visual" mesh="medial"/>
               <geom name="rf_md_collision_1" size="0.008 0.003 0.013" pos="0 -0.02 0.015" type="box"/>
               <geom name="rf_md_collision_5" size="0.017 0.011 0.013" pos="0.0075 -0.035 0.015" type="box"/>
-              <site name="rf_md_touch" type="box" pos="-0.0075 -0.035 0.015" size="0.005 0.01 0.01" rgba="1 0 0 0.33"/>
+              <site name="rf_md_touch" type="box" pos="-0.0075 -0.035 0.015" size="0.0025 0.005 0.005" rgba="1 0 0 0.33"/>
               <body name="rf_ds" pos="0 -0.03609 0.0002">
                 <inertial pos="-0.0008794 -0.027019 0.014594" quat="0.702905 0.710643 -0.0212937 -0.0214203"
                   mass="0.016" diaginertia="3.71863e-06 3.02396e-06 1.6518e-06"/>
@@ -268,7 +269,7 @@
                 <geom name="rf_tip" class="tip"/>
                 <geom type="mesh" mesh="tip" class="visual" material="gray"/>
                 <site name="rf_tip" pos="0 -0.05 0.015" group="4"/>
-                <site name="rf_tip_touch" type="sphere" pos="-0.01 -0.03 0.015" size="0.01" rgba="1 1 0 0.33"/>
+                <site name="rf_tip_touch" type="sphere" pos="-0.01 -0.03 0.015" size="0.005" rgba="1 1 0 0.33"/>
               </body>
             </body>
           </body>
@@ -291,17 +292,17 @@
               <joint name="th_mcp" class="thumb_mcp"/>
               <geom name="th_px_visual" pos="0.0439 0.0579 -0.0086" quat="1 0 0 0" class="visual" mesh="thumb_proximal"/>
               <geom name="th_px_collision_1" size="0.01 0.02 0.012" pos="0 0.0105 -0.014" type="box"/>
-              <site name="th_px_touch" type="box" size="0.005 0.015 0.01" pos="0.01 0.0105 -0.014" rgba="1 0 0 0.33"/>
+              <site name="th_px_touch" type="box" size="0.0025 0.0075 0.005" pos="0.01 0.0105 -0.014" rgba="1 0 0 0.33"/>
               <body name="th_ds" pos="0 0.0466 0.0002" quat="1.32679e-06 0 0 1">
                 <inertial pos="0.00096191 -0.024203 -0.014419" quat="0.35287 0.311272 -0.632839 0.614904" mass="0.049"
                   diaginertia="2.08591e-05 2.0402e-05 4.71335e-06"/>
                 <joint name="th_ipl" class="thumb_ipl"/>
                 <geom name="th_ds_visual" pos="0.0625 0.0784 0.0489" quat="1 0 0 0" class="visual" mesh="thumb_distal"/>
                 <geom name="th_ds_collision_1" size="0.01 0.018 0.012" pos="0 -0.0085 -0.015" type="box"/>
-                <site name="th_ds_touch" type="box" size="0.005 0.015 0.01" pos="-0.01 -0.0085 -0.015" rgba="1 0 0 0.33"/>
+                <site name="th_ds_touch" type="box" size="0.0025 0.0075 0.005" pos="-0.01 -0.0085 -0.015" rgba="1 0 0 0.33"/>
                 <geom name="th_tip" class="thumb_tip"/>
                 <site name="th_tip" pos="0 -0.06 -0.015" group="4"/>
-                <site name="th_tip_touch" type="sphere" pos="-0.01 -0.04 -0.015" size="0.01" rgba="1 1 0 0.33"/>
+                <site name="th_tip_touch" type="sphere" pos="-0.01 -0.04 -0.015" size="0.005" rgba="1 1 0 0.33"/>
                 <geom type="mesh" mesh="thumb_tip" class="visual" material="gray"/>
               </body>
             </body>
