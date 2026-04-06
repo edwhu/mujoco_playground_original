@@ -313,6 +313,30 @@
             0
         ]
     },
+    "12_sensors": {
+        "discovered_12_sensor_1": [
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            0,
+            0,
+            1,
+            1,
+            1,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            1
+        ]
+    },
     "13_sensors": {
         "baseline_fingers_center_palm": [
             1,
