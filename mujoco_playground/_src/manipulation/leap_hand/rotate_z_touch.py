@@ -14,6 +14,7 @@
 # ==============================================================================
 """Rotate-z with leap hand and touch sensors."""
 
+import math
 from typing import Any, Dict, Optional, Union
 
 import jax
@@ -75,7 +76,7 @@ class CubeRotateZAxisTouch(leap_hand_base.LeapHandEnv):
       fixed_mask: Optional[jax.Array] = None,
       touch_sensor_noise_prob: float = 0.0,
       finger_noise_prob: float = 0.0,  # Per-step dropout for finger/thumb sensors (indices 8-19)
-      non_palm_touch_threshold: float = 10.0,
+      non_palm_touch_threshold: float = 0.0,
   ):
     self._fixed_mask = fixed_mask
     self._touch_sensor_noise_prob = touch_sensor_noise_prob
@@ -477,6 +478,7 @@ def create_mask_class(
     fixed_mask: jax.Array,
     touch_sensor_noise_prob: float = 0.0,
     finger_noise_prob: float = 0.0,
+    non_palm_touch_threshold: float = 0.0,
 ):
   """Create a CubeRotateZAxisTouch subclass with a baked-in fixed mask."""
 
@@ -493,15 +495,27 @@ def create_mask_class(
         fixed_mask=fixed_mask,
         touch_sensor_noise_prob=touch_sensor_noise_prob,
         finger_noise_prob=finger_noise_prob,
+        non_palm_touch_threshold=non_palm_touch_threshold,
     )
 
   noise_str = (f" and {touch_sensor_noise_prob * 100:.0f}% sensor dropout."
                if touch_sensor_noise_prob > 0.0 else ".")
   finger_str = (f" and {finger_noise_prob * 100:.0f}% finger sensor dropout."
                 if finger_noise_prob > 0.0 else "")
+  if non_palm_touch_threshold == 0.0:
+    thresh_str = ""
+  elif math.isinf(non_palm_touch_threshold):
+    thresh_str = (
+        " Non-palm touch threshold=inf (finger/thumb binary reads always 0)."
+    )
+  else:
+    thresh_str = f" Non-palm touch threshold={non_palm_touch_threshold}."
   cls = type(class_name, (CubeRotateZAxisTouch,), {
       "__init__": __init__,
-      "__doc__": f"Rotate z-axis with touch sensors using fixed mask{noise_str}{finger_str}",
+      "__doc__": (
+          f"Rotate z-axis with touch sensors using fixed mask{noise_str}"
+          f"{finger_str}{thresh_str}"
+      ),
       "__module__": __name__,
   })
   return cls
@@ -527,10 +541,30 @@ def _create_touch_mask_classes(mask_path: str):
           noise_class_name, mask, pct / 100.0
       )
 
-    # FingerNoise variant: palm (0-4) 0% noise, finger/thumb (5-19) 95% noise.
+    # FingerNoise variants: palm 0% noise, finger/thumb 90% dropout; non-palm
+    # binarization: threshold 0 (any contact), 10 (stricter), or inf (never 1).
     finger_noise_class_name = f"CubeRotateZAxisTouchMask{mask_n}FingerNoise"
     globals_dict[finger_noise_class_name] = create_mask_class(
         finger_noise_class_name, mask,
         touch_sensor_noise_prob=0.0,
         finger_noise_prob=0.9,
+        non_palm_touch_threshold=0.0,
+    )
+    finger_noise_t10_name = (
+        f"CubeRotateZAxisTouchMask{mask_n}FingerNoiseFingerThreshold10"
+    )
+    globals_dict[finger_noise_t10_name] = create_mask_class(
+        finger_noise_t10_name, mask,
+        touch_sensor_noise_prob=0.0,
+        finger_noise_prob=0.9,
+        non_palm_touch_threshold=10.0,
+    )
+    finger_noise_tinf_name = (
+        f"CubeRotateZAxisTouchMask{mask_n}FingerNoiseFingerThresholdInf"
+    )
+    globals_dict[finger_noise_tinf_name] = create_mask_class(
+        finger_noise_tinf_name, mask,
+        touch_sensor_noise_prob=0.0,
+        finger_noise_prob=0.9,
+        non_palm_touch_threshold=float("inf"),
     )
