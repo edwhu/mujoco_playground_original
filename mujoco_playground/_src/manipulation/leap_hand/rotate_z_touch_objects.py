@@ -82,7 +82,7 @@ class CubeRotateZAxisTouchObjects(leap_hand_base.LeapHandEnv):
     self._finger_noise_prob = finger_noise_prob
     self._non_palm_touch_threshold = non_palm_touch_threshold
     super().__init__(
-        xml_path=consts.CUBE_TOUCH_XML.as_posix(),
+        xml_path=consts.MULTIOBJECT_OOD_TOUCH_XML.as_posix(),
         config=config,
         config_overrides=config_overrides,
     )
@@ -111,14 +111,59 @@ class CubeRotateZAxisTouchObjects(leap_hand_base.LeapHandEnv):
   def _post_init(self) -> None:
     self._hand_qids = mjx_env.get_qpos_ids(self.mj_model, consts.JOINT_NAMES)
     self._hand_dqids = mjx_env.get_qvel_ids(self.mj_model, consts.JOINT_NAMES)
-    self._cube_qids = mjx_env.get_qpos_ids(self.mj_model, ["cube_freejoint"])
     self._floor_geom_id = self._mj_model.geom("floor").id
-    self._cube_geom_id = self._mj_model.geom("cube").id
+
+    # Multi-object: 7 objects, each with its own freejoint in the XML.
+    self._cube_names = [f"cube{i}" for i in range(7)]
+    self._cube_freejoint_names = [f"cube{i}_freejoint" for i in range(7)]
+    self._all_cube_qids = [
+        mjx_env.get_qpos_ids(self.mj_model, [name])
+        for name in self._cube_freejoint_names
+    ]
 
     home_key = self._mj_model.keyframe("home")
     self._init_q = jp.array(home_key.qpos)
     self._default_pose = self._init_q[self._hand_qids]
     self._lowers, self._uppers = self.mj_model.actuator_ctrlrange.T
+
+  def _find_active_cube_idx(self, info: dict[str, Any]) -> jax.Array:
+    return info["active_cube_idx"]
+
+  def _get_active_cube_data(
+      self, data: mjx.Data, info: dict[str, Any]
+  ) -> dict[str, jax.Array]:
+    """Get sensor data for the active object (cube0..cube6)."""
+    active_idx = self._find_active_cube_idx(info)
+    all_cube_positions = jp.stack(
+        [
+            mjx_env.get_sensor_data(self.mj_model, data, f"cube{i}_position")
+            for i in range(7)
+        ]
+    )
+    all_cube_orientations = jp.stack(
+        [
+            mjx_env.get_sensor_data(self.mj_model, data, f"cube{i}_orientation")
+            for i in range(7)
+        ]
+    )
+    all_cube_angvels = jp.stack(
+        [
+            mjx_env.get_sensor_data(self.mj_model, data, f"cube{i}_angvel")
+            for i in range(7)
+        ]
+    )
+    all_cube_linvels = jp.stack(
+        [
+            mjx_env.get_sensor_data(self.mj_model, data, f"cube{i}_linvel")
+            for i in range(7)
+        ]
+    )
+    return {
+        "position": all_cube_positions[active_idx],
+        "orientation": all_cube_orientations[active_idx],
+        "angvel": all_cube_angvels[active_idx],
+        "linvel": all_cube_linvels[active_idx],
+    }
 
   def reset(self, rng: jax.Array) -> mjx_env.State:
     # Randomize hand qpos and qvel.
@@ -130,17 +175,35 @@ class CubeRotateZAxisTouchObjects(leap_hand_base.LeapHandEnv):
     )
     v_hand = 0.0 * jax.random.normal(vel_rng, (consts.NV,))
 
-    # Randomize cube qpos and qvel.
+    # Choose which object will be active for this episode.
+    rng, cube_choice_rng = jax.random.split(rng)
+    active_cube_idx = jax.random.randint(cube_choice_rng, (), 0, 7)
+
+    # Position objects: active at task location; inactive moved away.
     rng, p_rng, quat_rng = jax.random.split(rng, 3)
-    start_pos = jp.array([0.1, 0.0, 0.05]) + jax.random.uniform(
+    active_start_pos = jp.array([0.11, 0.0, 0.1]) + jax.random.uniform(
         p_rng, (3,), minval=-0.01, maxval=0.01
     )
-    start_quat = leap_hand_base.uniform_quat(quat_rng)
-    q_cube = jp.array([*start_pos, *start_quat])
-    v_cube = jp.zeros(6)
+    active_start_quat = leap_hand_base.uniform_quat(quat_rng)
+    inactive_pos = jp.array([1.0, 1.0, 0.1])
+    inactive_quat = jp.array([1.0, 0.0, 0.0, 0.0])
 
-    qpos = jp.concatenate([q_hand, q_cube])
-    qvel = jp.concatenate([v_hand, v_cube])
+    cube_indices = jp.arange(7)
+    is_active = cube_indices == active_cube_idx
+    cube_positions = jp.where(
+        is_active[:, None], jp.tile(active_start_pos, (7, 1)), jp.tile(inactive_pos, (7, 1))
+    )
+    cube_quats = jp.where(
+        is_active[:, None], jp.tile(active_start_quat, (7, 1)), jp.tile(inactive_quat, (7, 1))
+    )
+
+    q_cubes = [jp.concatenate([cube_positions[i], cube_quats[i]]) for i in range(7)]
+    v_cubes = [jp.zeros(6) for _ in range(7)]
+    q_all_cubes = jp.concatenate(q_cubes)
+    v_all_cubes = jp.concatenate(v_cubes)
+
+    qpos = jp.concatenate([q_hand, q_all_cubes])
+    qvel = jp.concatenate([v_hand, v_all_cubes])
     data = mjx_env.make_data(
         self._mj_model,
         qpos=qpos,
@@ -158,6 +221,7 @@ class CubeRotateZAxisTouchObjects(leap_hand_base.LeapHandEnv):
         "last_last_act": jp.zeros(self.mjx_model.nu),
         "motor_targets": data.ctrl,
         "last_cube_angvel": jp.zeros(3),
+        "active_cube_idx": active_cube_idx,
         "episode_touch_mask": self.generate_episode_touch_mask(
             info={"rng": rng},
             fixed_mask=self._fixed_mask,
@@ -181,7 +245,7 @@ class CubeRotateZAxisTouchObjects(leap_hand_base.LeapHandEnv):
     state.info["motor_targets"] = motor_targets
 
     obs = self._get_obs(data, state.info, state.obs["state"])
-    done = self._get_termination(data)
+    done = self._get_termination(data, state.info)
 
     rewards = self._get_reward(data, action, state.info, state.metrics, done)
     rewards = {
@@ -191,7 +255,7 @@ class CubeRotateZAxisTouchObjects(leap_hand_base.LeapHandEnv):
 
     state.info["last_last_act"] = state.info["last_act"]
     state.info["last_act"] = action
-    state.info["last_cube_angvel"] = self.get_cube_angvel(data)
+    state.info["last_cube_angvel"] = self._get_active_cube_data(data, state.info)["angvel"]
     for k, v in rewards.items():
       state.metrics[f"reward/{k}"] = v
 
@@ -199,8 +263,8 @@ class CubeRotateZAxisTouchObjects(leap_hand_base.LeapHandEnv):
     state = state.replace(data=data, obs=obs, reward=reward, done=done)
     return state
 
-  def _get_termination(self, data: mjx.Data) -> jax.Array:
-    fall_termination = self.get_cube_position(data)[2] < -0.05
+  def _get_termination(self, data: mjx.Data, info: dict[str, Any]) -> jax.Array:
+    fall_termination = self._get_active_cube_data(data, info)["position"][2] < -0.05
     return fall_termination
 
   def _get_touch_sensors_thresholded(self, data: mjx.Data) -> jax.Array:
@@ -249,12 +313,13 @@ class CubeRotateZAxisTouchObjects(leap_hand_base.LeapHandEnv):
     obs_history = jp.roll(obs_history, state.size)
     obs_history = obs_history.at[: state.size].set(state)
 
-    cube_pos = self.get_cube_position(data)
+    active_cube_data = self._get_active_cube_data(data, info)
+    cube_pos = active_cube_data["position"]
     palm_pos = self.get_palm_position(data)
     cube_pos_error = palm_pos - cube_pos
-    cube_quat = self.get_cube_orientation(data)
-    cube_angvel = self.get_cube_angvel(data)
-    cube_linvel = self.get_cube_linvel(data)
+    cube_quat = active_cube_data["orientation"]
+    cube_angvel = active_cube_data["angvel"]
+    cube_linvel = active_cube_data["linvel"]
     fingertip_positions = self.get_fingertip_positions(data)
     joint_torques = data.actuator_force
 
@@ -284,11 +349,12 @@ class CubeRotateZAxisTouchObjects(leap_hand_base.LeapHandEnv):
       done: jax.Array,
   ) -> dict[str, jax.Array]:
     del metrics
-    cube_pos = self.get_cube_position(data)
+    active_cube_data = self._get_active_cube_data(data, info)
+    cube_pos = active_cube_data["position"]
     palm_pos = self.get_palm_position(data)
     cube_pos_error = palm_pos - cube_pos
-    cube_angvel = self.get_cube_angvel(data)
-    cube_linvel = self.get_cube_linvel(data)
+    cube_angvel = active_cube_data["angvel"]
+    cube_linvel = active_cube_data["linvel"]
     return {
         "angvel": self._reward_angvel(cube_angvel, cube_pos_error),
         "linvel": self._cost_linvel(cube_linvel),
@@ -332,8 +398,8 @@ class CubeRotateZAxisTouchObjects(leap_hand_base.LeapHandEnv):
 
 def domain_randomize(model: mjx.Model, rng: jax.Array):
   mj_model = CubeRotateZAxisTouchObjects().mj_model
-  cube_geom_id = mj_model.geom("cube").id
-  cube_body_id = mj_model.body("cube").id
+  # Multi-object: randomize inertial properties for all 7 object bodies.
+  cube_body_ids = jp.array([mj_model.body(f"cube{i}").id for i in range(7)])
   hand_qids = mjx_env.get_qpos_ids(mj_model, consts.JOINT_NAMES)
   hand_body_names = [
       "palm",
@@ -367,13 +433,13 @@ def domain_randomize(model: mjx.Model, rng: jax.Array):
     )
 
     rng, key1, key2 = jax.random.split(rng, 3)
-    dmass = jax.random.uniform(key1, minval=0.8, maxval=1.2)
-    body_inertia = model.body_inertia.at[cube_body_id].set(
-        model.body_inertia[cube_body_id] * dmass
+    dmass = jax.random.uniform(key1, (7,), minval=0.8, maxval=1.2)
+    body_inertia = model.body_inertia.at[cube_body_ids].set(
+        model.body_inertia[cube_body_ids] * dmass[:, None]
     )
-    dpos = jax.random.uniform(key2, (3,), minval=-5e-3, maxval=5e-3)
-    body_ipos = model.body_ipos.at[cube_body_id].set(
-        model.body_ipos[cube_body_id] + dpos
+    dpos = jax.random.uniform(key2, (7, 3), minval=-5e-3, maxval=5e-3)
+    body_ipos = model.body_ipos.at[cube_body_ids].set(
+        model.body_ipos[cube_body_ids] + dpos
     )
 
     rng, key = jax.random.split(rng)
