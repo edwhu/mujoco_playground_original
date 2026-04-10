@@ -45,47 +45,45 @@
       <site name="cube0_center" pos="0 0 0" group="4"/>
     </body>
     
-    <!-- Cube 1 - Box Long -->
+    <!-- Cube 1 -->
     <body name="cube1" pos="0.11 0.0 0.1" quat="1 0 0 0" childclass="cube">
       <freejoint name="cube1_freejoint"/>
-      <geom name="cube1_geom" type="box" size=".045 .020 .028" mass=".036" material="lightblue" contype="8" conaffinity="3" group="3"/>
+      <geom name="cube1_geom" type="box" size=".033333 .033333 .033333" mass=".031098" material="lightblue" contype="8" conaffinity="3" group="3"/>
       <site name="cube1_center" pos="0 0 0" group="4"/>
     </body>
     
-    <!-- Cube 2 - Capsule -->
+    <!-- Cube 2 -->
     <body name="cube2" pos="0.11 0.0 0.1" quat="1 0 0 0" childclass="cube">
       <freejoint name="cube2_freejoint"/>
-      <geom name="cube2_geom" type="capsule" size=".035 .010" mass=".036" material="lightgreen" contype="16" conaffinity="3" group="3"/>
+      <geom name="cube2_geom" type="box" size=".031667 .031667 .031667" mass=".026663" material="lightgreen" contype="16" conaffinity="3" group="3"/>
       <site name="cube2_center" pos="0 0 0" group="4"/>
     </body>
     
-    <!-- Cube 3 - Capsule Long -->
+    <!-- Cube 3 -->
     <body name="cube3" pos="0.11 0.0 0.1" quat="1 0 0 0" childclass="cube">
       <freejoint name="cube3_freejoint"/>
-      <geom name="cube3_geom" type="capsule" size=".035 .030" mass=".036" material="lightyellow" contype="32" conaffinity="3" group="3"/>
+      <geom name="cube3_geom" type="box" size=".03 .03 .03" mass=".022671" material="lightyellow" contype="32" conaffinity="3" group="3"/>
       <site name="cube3_center" pos="0 0 0" group="4"/>
     </body>
     
-    <!-- Cube 4 - Capsule Pumpkin (scaled from scene_mjx_capsule_pumpkin_touch) -->
+    <!-- Cube 4 -->
     <body name="cube4" pos="0.11 0.0 0.1" quat="1 0 0 0" childclass="cube">
       <freejoint name="cube4_freejoint"/>
-      <geom name="cube4_horizontal" type="capsule" size=".030 .012" pos="0 0 0" quat="0.707 0 0.707 0" mass=".018" material="lightpurple" contype="64" conaffinity="3" group="3"/>
-      <geom name="cube4_vertical" type="capsule" size=".030 .012" pos="0 0 0" quat="1 0 0 0" mass=".018" material="lightpurple" contype="64" conaffinity="3" group="3"/>
+      <geom name="cube4_geom" type="box" size=".028333 .028333 .028333" mass=".019098" material="lightpurple" contype="64" conaffinity="3" group="3"/>
       <site name="cube4_center" pos="0 0 0" group="4"/>
     </body>
     
-    <!-- Cube 5 - Capsule Pumpkin Long (one original-length capsule, one longer) -->
+    <!-- Cube 5 -->
     <body name="cube5" pos="0.11 0.0 0.1" quat="1 0 0 0" childclass="cube">
       <freejoint name="cube5_freejoint"/>
-      <geom name="cube5_horizontal" type="capsule" size=".030 .012" pos="0 0 0" quat="0.707 0 0.707 0" mass=".018" material="lightpurple" contype="128" conaffinity="3" group="3"/>
-      <geom name="cube5_vertical" type="capsule" size=".030 .020" pos="0 0 0" quat="1 0 0 0" mass=".018" material="lightpurple" contype="128" conaffinity="3" group="3"/>
+      <geom name="cube5_geom" type="box" size=".026667 .026667 .026667" mass=".015922" material="lightpurple" contype="128" conaffinity="3" group="3"/>
       <site name="cube5_center" pos="0 0 0" group="4"/>
     </body>
     
-    <!-- Cube 6 - Sphere -->
+    <!-- Cube 6 -->
     <body name="cube6" pos="0.11 0.0 0.1" quat="1 0 0 0" childclass="cube">
       <freejoint name="cube6_freejoint"/>
-      <geom name="cube6_geom" type="sphere" size=".038" mass=".036" material="salmon" contype="256" conaffinity="3" group="3"/>
+      <geom name="cube6_geom" type="box" size=".025 .025 .025" mass=".01312" material="salmon" contype="256" conaffinity="3" group="3"/>
       <site name="cube6_center" pos="0 0 0" group="4"/>
     </body>
     
