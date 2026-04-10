@@ -6,6 +6,24 @@
     "All ranges are uniform draws U[min,max]. For per-DOF/per-body parameters, the draw is elementwise."
   ],
   "parameters": {
+    "hand_geom_friction_sliding": {
+      "mode": "set",
+      "equation": "geom_friction[hand_geoms,0] = U[min,max]",
+      "description": "Overrides Leap hand geoms sliding friction (MuJoCo geom_friction[...,0]). If omitted, XML values are used (no override).",
+      "example_value": "0.8 (from real-world-ish tuning like '0.8 0.05 0.0002')"
+    },
+    "hand_geom_friction_torsional": {
+      "mode": "set",
+      "equation": "geom_friction[hand_geoms,1] = U[min,max]",
+      "description": "Overrides Leap hand geoms torsional friction (MuJoCo geom_friction[...,1]). If omitted, XML values are used (no override).",
+      "example_value": "0.05"
+    },
+    "hand_geom_friction_rolling": {
+      "mode": "set",
+      "equation": "geom_friction[hand_geoms,2] = U[min,max]",
+      "description": "Overrides Leap hand geoms rolling friction (MuJoCo geom_friction[...,2]). If omitted, XML values are used (no override).",
+      "example_value": "0.0002"
+    },
     "geom_friction_fingertips": {
       "mode": "set",
       "equation": "geom_friction[fingertip_geoms, sliding] = U[min,max]",

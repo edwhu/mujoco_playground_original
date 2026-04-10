@@ -354,6 +354,22 @@ def domain_randomize(
       )
     return minval, maxval
 
+  def _optional_range(key: str) -> Optional[tuple[float, float]]:
+    cfg = dr_config.get(key)
+    if cfg is None:
+      return None
+    if not isinstance(cfg, dict):
+      raise ValueError(f"DR range for '{key}' must be an object with min/max.")
+    if "min" not in cfg or "max" not in cfg:
+      raise ValueError(f"DR range for '{key}' must contain 'min' and 'max'.")
+    minval = float(cfg["min"])
+    maxval = float(cfg["max"])
+    if minval > maxval:
+      raise ValueError(
+          f"Invalid DR range for '{key}': min ({minval}) > max ({maxval})."
+      )
+    return minval, maxval
+
   fingertip_friction_min, fingertip_friction_max = _range(
       "geom_friction_fingertips", 0.5, 1.0
   )
@@ -375,6 +391,10 @@ def domain_randomize(
   hand_damping_scale_min, hand_damping_scale_max = _range(
       "hand_damping_scale", 0.8, 1.2
   )
+
+  hand_geom_friction_sliding = _optional_range("hand_geom_friction_sliding")
+  hand_geom_friction_torsional = _optional_range("hand_geom_friction_torsional")
+  hand_geom_friction_rolling = _optional_range("hand_geom_friction_rolling")
 
   mj_model = CubeRotateZAxisTouch().mj_model
   cube_geom_id = mj_model.geom("cube").id
@@ -400,11 +420,38 @@ def domain_randomize(
       "th_ds",
   ]
   hand_body_ids = np.array([mj_model.body(n).id for n in hand_body_names])
+  hand_geom_ids = np.where(np.isin(mj_model.geom_bodyid, hand_body_ids))[0]
   fingertip_geoms = ["th_tip", "if_tip", "mf_tip", "rf_tip"]
   fingertip_geom_ids = [mj_model.geom(g).id for g in fingertip_geoms]
 
   @jax.vmap
   def rand(rng):
+    geom_friction = model.geom_friction
+
+    # Optional override: set Leap hand geom friction triplet for all hand geoms.
+    # MuJoCo geom_friction = [sliding, torsional, rolling].
+    if hand_geom_friction_sliding is not None:
+      rng, key = jax.random.split(rng)
+      mu = jax.random.uniform(
+          key, (1,), minval=hand_geom_friction_sliding[0], maxval=hand_geom_friction_sliding[1]
+      )
+      geom_friction = geom_friction.at[hand_geom_ids, 0].set(mu)
+    if hand_geom_friction_torsional is not None:
+      rng, key = jax.random.split(rng)
+      mu = jax.random.uniform(
+          key,
+          (1,),
+          minval=hand_geom_friction_torsional[0],
+          maxval=hand_geom_friction_torsional[1],
+      )
+      geom_friction = geom_friction.at[hand_geom_ids, 1].set(mu)
+    if hand_geom_friction_rolling is not None:
+      rng, key = jax.random.split(rng)
+      mu = jax.random.uniform(
+          key, (1,), minval=hand_geom_friction_rolling[0], maxval=hand_geom_friction_rolling[1]
+      )
+      geom_friction = geom_friction.at[hand_geom_ids, 2].set(mu)
+
     rng, key = jax.random.split(rng)
     fingertip_friction = jax.random.uniform(
         key,
@@ -412,9 +459,7 @@ def domain_randomize(
         minval=fingertip_friction_min,
         maxval=fingertip_friction_max,
     )
-    geom_friction = model.geom_friction.at[fingertip_geom_ids, 0].set(
-        fingertip_friction
-    )
+    geom_friction = geom_friction.at[fingertip_geom_ids, 0].set(fingertip_friction)
 
     rng, key1, key2 = jax.random.split(rng, 3)
     dmass = jax.random.uniform(

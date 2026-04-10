@@ -84,3 +84,11 @@ Notes:
   - `hand_frictionloss_scale`: \(U[0.2, 0.8]\)
   - `actuator_kp_scale`: \(U[1.2, 2.0]\)
 
+#### 11) Hand geom friction (fixed triplet)
+- **File**: `scripts/dr_exp11_hand_geom_friction_0p8_0p05_0p0002.json`
+- **What it does**: Overrides the Leap hand geoms’ MuJoCo friction triplet \([sliding, torsional, rolling]\) to match a real-world-ish tuning.
+- **Changes**:
+  - `hand_geom_friction_sliding`: \(U[0.8, 0.8]\)
+  - `hand_geom_friction_torsional`: \(U[0.05, 0.05]\)
+  - `hand_geom_friction_rolling`: \(U[0.0002, 0.0002]\)
+

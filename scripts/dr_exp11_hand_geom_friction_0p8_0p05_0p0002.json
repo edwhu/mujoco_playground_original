@@ -1,0 +1,5 @@
+{
+  "hand_geom_friction_sliding": { "min": 0.8, "max": 0.8 },
+  "hand_geom_friction_torsional": { "min": 0.05, "max": 0.05 },
+  "hand_geom_friction_rolling": { "min": 0.0002, "max": 0.0002 }
+}
