@@ -1,0 +1,6 @@
+{
+  "geom_friction_fingertips": { "min": 1.5, "max": 2.5 },
+  "hand_damping_scale": { "min": 0.3, "max": 0.8 },
+  "hand_frictionloss_scale": { "min": 0.2, "max": 0.8 },
+  "actuator_kp_scale": { "min": 1.2, "max": 2.0 }
+}

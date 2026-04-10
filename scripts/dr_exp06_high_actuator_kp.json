@@ -1,0 +1,3 @@
+{
+  "actuator_kp_scale": { "min": 1.2, "max": 2.0 }
+}

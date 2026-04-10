@@ -1,0 +1,73 @@
+{
+  "scope": "LeapCubeRotateZAxisTouch / LeapCubeRotateZAxisTouchObjects domain_randomize()",
+  "notes": [
+    "This is metadata only (not consumed by training).",
+    "Each DR experiment JSON should be a single object mapping param_key -> {min,max}.",
+    "All ranges are uniform draws U[min,max]. For per-DOF/per-body parameters, the draw is elementwise."
+  ],
+  "parameters": {
+    "geom_friction_fingertips": {
+      "mode": "set",
+      "equation": "geom_friction[fingertip_geoms, sliding] = U[min,max]",
+      "description": "Sets fingertip sliding friction (MuJoCo geom_friction[...,0]) directly.",
+      "default_min": 0.5,
+      "default_max": 1.0
+    },
+    "cube_inertia_scale": {
+      "mode": "mul",
+      "equation": "cube_body_inertia = cube_body_inertia * U[min,max]",
+      "description": "Scales cube body inertia (affects angular acceleration).",
+      "default_min": 0.8,
+      "default_max": 1.2
+    },
+    "cube_ipos_add": {
+      "mode": "add",
+      "equation": "cube_body_ipos = cube_body_ipos + U[min,max] (per axis)",
+      "description": "Adds offset to cube COM position in body frame (meters).",
+      "default_min": -0.005,
+      "default_max": 0.005
+    },
+    "hand_qpos0_add": {
+      "mode": "add",
+      "equation": "qpos0[hand] = qpos0[hand] + U[min,max] (per joint)",
+      "description": "Adds offset to hand default joint positions (radians).",
+      "default_min": -0.05,
+      "default_max": 0.05
+    },
+    "hand_frictionloss_scale": {
+      "mode": "mul",
+      "equation": "dof_frictionloss[hand] = dof_frictionloss[hand] * U[min,max]",
+      "description": "Scales hand internal joint frictionloss (opposes motion; can kill small velocities).",
+      "default_min": 0.5,
+      "default_max": 2.0
+    },
+    "hand_armature_scale": {
+      "mode": "mul",
+      "equation": "dof_armature[hand] = dof_armature[hand] * U[min,max]",
+      "description": "Scales hand armature (effective inertia in joint dynamics).",
+      "default_min": 1.0,
+      "default_max": 1.05
+    },
+    "hand_mass_scale": {
+      "mode": "mul",
+      "equation": "body_mass[hand] = body_mass[hand] * U[min,max]",
+      "description": "Scales hand link masses.",
+      "default_min": 0.9,
+      "default_max": 1.1
+    },
+    "actuator_kp_scale": {
+      "mode": "mul",
+      "equation": "kp = kp * U[min,max]; actuator_biasprm[:,1] = -kp",
+      "description": "Scales actuator gain (position actuator strength) and keeps bias coupled to -kp.",
+      "default_min": 0.8,
+      "default_max": 1.2
+    },
+    "hand_damping_scale": {
+      "mode": "mul",
+      "equation": "dof_damping[hand] = dof_damping[hand] * U[min,max]",
+      "description": "Scales hand joint damping (resistance proportional to joint velocity).",
+      "default_min": 0.8,
+      "default_max": 1.2
+    }
+  }
+}
