@@ -372,7 +372,7 @@ def main(argv):
         for j in range(ppo_params.episode_length)
     ]
 
-  render_every = 2
+  render_every = 1
   fps = 1.0 / infer_env.dt / render_every
   print(f"FPS for rendering: {fps}")
   scene_option = mujoco.MjvOption()

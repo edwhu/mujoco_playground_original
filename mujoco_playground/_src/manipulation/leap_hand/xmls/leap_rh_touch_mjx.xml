@@ -37,7 +37,7 @@
       <site type="box" size="0.005 0.005 0.005" rgba="0.8 0.8 0.8 0.15" group="4"/>
     </default>
     <default class="leap_rh">
-      <geom group="3" friction="0.2" solref="0.02 1.5" solimp="0.9 0.99 0.001"/>
+      <geom group="3" friction="1.1 0.2 0.0002" solref="0.02 1.5" solimp="0.9 0.99 0.001"/>
       <default class="visual">
         <geom group="2" type="mesh" contype="0" conaffinity="0" density="0" material="black"/>
       </default>
