@@ -1,69 +1,63 @@
 {
-  "experiments": {
-    "mask16_default_like": {
-      "geom_friction_fingertips": {
-        "mode": "set",
-        "equation": "fingertip_mu = U[min,max]",
-        "description": "Set fingertip geom sliding friction directly.",
-        "min": 0.5,
-        "max": 1.0
-      },
-      "cube_inertia_scale": {
-        "mode": "mul",
-        "equation": "cube_inertia = cube_inertia * U[min,max]",
-        "description": "Scale cube body inertia.",
-        "min": 0.8,
-        "max": 1.2
-      },
-      "cube_ipos_add": {
-        "mode": "add",
-        "equation": "cube_ipos = cube_ipos + U[min,max] (per axis)",
-        "description": "Add offset to cube COM position (meters).",
-        "min": -0.005,
-        "max": 0.005
-      },
-      "hand_qpos0_add": {
-        "mode": "add",
-        "equation": "qpos0[hand] = qpos0[hand] + U[min,max] (per joint)",
-        "description": "Add offset to hand default joint positions (radians).",
-        "min": -0.05,
-        "max": 0.05
-      },
-      "hand_frictionloss_scale": {
-        "mode": "mul",
-        "equation": "dof_frictionloss[hand] = dof_frictionloss[hand] * U[min,max]",
-        "description": "Scale hand DOF friction loss.",
-        "min": 0.5,
-        "max": 2.0
-      },
-      "hand_armature_scale": {
-        "mode": "mul",
-        "equation": "dof_armature[hand] = dof_armature[hand] * U[min,max]",
-        "description": "Scale hand DOF armature.",
-        "min": 1.0,
-        "max": 1.05
-      },
-      "hand_mass_scale": {
-        "mode": "mul",
-        "equation": "body_mass[hand] = body_mass[hand] * U[min,max]",
-        "description": "Scale hand link masses.",
-        "min": 0.9,
-        "max": 1.1
-      },
-      "actuator_kp_scale": {
-        "mode": "mul",
-        "equation": "kp = kp * U[min,max]; bias[:,1] = -kp",
-        "description": "Scale actuator gains and keep bias coupled to -kp.",
-        "min": 0.8,
-        "max": 1.2
-      },
-      "hand_damping_scale": {
-        "mode": "mul",
-        "equation": "dof_damping[hand] = dof_damping[hand] * U[min,max]",
-        "description": "Scale hand DOF damping.",
-        "min": 0.8,
-        "max": 1.2
-      }
+  "_notes": [
+    "Single-experiment DR config for Leap touch rotate environments.",
+    "This file uses JSON (no comments). Keys starting with '_' are treated as metadata and ignored by the loader.",
+    "Defaults are hardcoded in the environment DR code; the values below match the built-in defaults."
+  ],
+  "_defaults": {
+    "geom_friction_fingertips": {
+      "mode": "set",
+      "equation": "fingertip_mu = U[min,max]",
+      "description": "Set fingertip geom sliding friction directly."
+    },
+    "cube_inertia_scale": {
+      "mode": "mul",
+      "equation": "cube_inertia = cube_inertia * U[min,max]",
+      "description": "Scale cube body inertia."
+    },
+    "cube_ipos_add": {
+      "mode": "add",
+      "equation": "cube_ipos = cube_ipos + U[min,max] (per axis)",
+      "description": "Add offset to cube COM position (meters)."
+    },
+    "hand_qpos0_add": {
+      "mode": "add",
+      "equation": "qpos0[hand] = qpos0[hand] + U[min,max] (per joint)",
+      "description": "Add offset to hand default joint positions (radians)."
+    },
+    "hand_frictionloss_scale": {
+      "mode": "mul",
+      "equation": "dof_frictionloss[hand] = dof_frictionloss[hand] * U[min,max]",
+      "description": "Scale hand DOF friction loss."
+    },
+    "hand_armature_scale": {
+      "mode": "mul",
+      "equation": "dof_armature[hand] = dof_armature[hand] * U[min,max]",
+      "description": "Scale hand DOF armature."
+    },
+    "hand_mass_scale": {
+      "mode": "mul",
+      "equation": "body_mass[hand] = body_mass[hand] * U[min,max]",
+      "description": "Scale hand link masses."
+    },
+    "actuator_kp_scale": {
+      "mode": "mul",
+      "equation": "kp = kp * U[min,max]; bias[:,1] = -kp",
+      "description": "Scale actuator gains and keep bias coupled to -kp."
+    },
+    "hand_damping_scale": {
+      "mode": "mul",
+      "equation": "dof_damping[hand] = dof_damping[hand] * U[min,max]",
+      "description": "Scale hand DOF damping."
     }
-  }
+  },
+  "geom_friction_fingertips": { "min": 0.5, "max": 1.0 },
+  "cube_inertia_scale": { "min": 0.8, "max": 1.2 },
+  "cube_ipos_add": { "min": -0.005, "max": 0.005 },
+  "hand_qpos0_add": { "min": -0.05, "max": 0.05 },
+  "hand_frictionloss_scale": { "min": 0.5, "max": 2.0 },
+  "hand_armature_scale": { "min": 1.0, "max": 1.05 },
+  "hand_mass_scale": { "min": 0.9, "max": 1.1 },
+  "actuator_kp_scale": { "min": 0.8, "max": 1.2 },
+  "hand_damping_scale": { "min": 0.8, "max": 1.2 }
 }

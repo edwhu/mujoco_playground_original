@@ -105,13 +105,9 @@ _MASK_PATH = flags.DEFINE_string(
 _DR_CONFIG_PATH = flags.DEFINE_string(
     "dr_config_path",
     None,
-    "Path to DR JSON config. Supports a single config object or "
-    "{'experiments': {...}} with --dr_experiment.",
-)
-_DR_EXPERIMENT = flags.DEFINE_string(
-    "dr_experiment",
-    None,
-    "Experiment name under dr_config.experiments to select.",
+    "Path to DR JSON config (single experiment). "
+    "Expected format: {<param_key>: {'min': <float>, 'max': <float>}, ...}. "
+    "Keys starting with '_' are treated as metadata and ignored.",
 )
 _SEED = flags.DEFINE_integer("seed", 1, "Random seed")
 _NUM_TIMESTEPS = flags.DEFINE_integer(
@@ -241,29 +237,8 @@ def _load_dr_config() -> dict[str, dict[str, float]] | None:
   if not isinstance(raw, dict):
     raise ValueError("DR config JSON must be an object.")
 
-  if "experiments" in raw:
-    experiments = raw["experiments"]
-    if not isinstance(experiments, dict):
-      raise ValueError("'experiments' must be an object in DR config.")
-    experiment_name = _DR_EXPERIMENT.value
-    if experiment_name is None:
-      if len(experiments) != 1:
-        raise ValueError(
-            "DR config contains multiple experiments. Pass --dr_experiment=<name>."
-        )
-      experiment_name = next(iter(experiments))
-    if experiment_name not in experiments:
-      raise ValueError(
-          f"Experiment '{experiment_name}' not found in DR config. "
-          f"Available: {list(experiments.keys())}"
-      )
-    cfg = experiments[experiment_name]
-  else:
-    cfg = raw
-
-  if not isinstance(cfg, dict):
-    raise ValueError("Selected DR config must be an object.")
-  return cfg
+  # Ignore metadata fields (JSON has no comments).
+  return {k: v for k, v in raw.items() if not str(k).startswith("_")}
 
 
 def _get_randomization_fn(env_name: str):
@@ -441,8 +416,6 @@ def main(argv):
   if _DR_CONFIG_PATH.value is not None:
     with open(ckpt_path / "dr_config_path.txt", "w", encoding="utf-8") as fp:
       fp.write(_DR_CONFIG_PATH.value + "\n")
-    with open(ckpt_path / "dr_experiment.txt", "w", encoding="utf-8") as fp:
-      fp.write((_DR_EXPERIMENT.value or "") + "\n")
 
   training_params = dict(ppo_params)
   if "network_factory" in training_params:
