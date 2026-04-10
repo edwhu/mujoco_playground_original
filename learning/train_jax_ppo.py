@@ -102,6 +102,17 @@ _DOMAIN_RANDOMIZATION = flags.DEFINE_boolean(
 _MASK_PATH = flags.DEFINE_string(
     "mask_path", None, "Path to sensor masks JSON file for touch environments"
 )
+_DR_CONFIG_PATH = flags.DEFINE_string(
+    "dr_config_path",
+    None,
+    "Path to DR JSON config. Supports a single config object or "
+    "{'experiments': {...}} with --dr_experiment.",
+)
+_DR_EXPERIMENT = flags.DEFINE_string(
+    "dr_experiment",
+    None,
+    "Experiment name under dr_config.experiments to select.",
+)
 _SEED = flags.DEFINE_integer("seed", 1, "Random seed")
 _NUM_TIMESTEPS = flags.DEFINE_integer(
     "num_timesteps", 1_000_000, "Number of timesteps"
@@ -218,6 +229,67 @@ def rscope_fn(full_states, obs, rew, done):
       "Collected rscope rollouts with reward"
       f" {episode_rewards.mean():.3f} +- {episode_rewards.std():.3f}"
   )
+
+
+def _load_dr_config() -> dict[str, dict[str, float]] | None:
+  if _DR_CONFIG_PATH.value is None:
+    return None
+
+  with open(_DR_CONFIG_PATH.value, "r", encoding="utf-8") as fp:
+    raw = json.load(fp)
+
+  if not isinstance(raw, dict):
+    raise ValueError("DR config JSON must be an object.")
+
+  if "experiments" in raw:
+    experiments = raw["experiments"]
+    if not isinstance(experiments, dict):
+      raise ValueError("'experiments' must be an object in DR config.")
+    experiment_name = _DR_EXPERIMENT.value
+    if experiment_name is None:
+      if len(experiments) != 1:
+        raise ValueError(
+            "DR config contains multiple experiments. Pass --dr_experiment=<name>."
+        )
+      experiment_name = next(iter(experiments))
+    if experiment_name not in experiments:
+      raise ValueError(
+          f"Experiment '{experiment_name}' not found in DR config. "
+          f"Available: {list(experiments.keys())}"
+      )
+    cfg = experiments[experiment_name]
+  else:
+    cfg = raw
+
+  if not isinstance(cfg, dict):
+    raise ValueError("Selected DR config must be an object.")
+  return cfg
+
+
+def _get_randomization_fn(env_name: str):
+  dr_config = _load_dr_config()
+  if dr_config is not None:
+    print("Using DR config:", dr_config)
+
+  randomization_fn = registry.get_domain_randomizer(env_name)
+  if dr_config is None or randomization_fn is None:
+    return randomization_fn
+
+  if env_name.startswith("LeapCubeRotateZAxisTouchObjects"):
+    from mujoco_playground._src.manipulation.leap_hand import rotate_z_touch_objects
+
+    return functools.partial(rotate_z_touch_objects.domain_randomize, dr_config=dr_config)
+
+  if env_name.startswith("LeapCubeRotateZAxisTouch"):
+    from mujoco_playground._src.manipulation.leap_hand import rotate_z_touch
+
+    return functools.partial(rotate_z_touch.domain_randomize, dr_config=dr_config)
+
+  print(
+      "DR config was provided, but this env has no custom DR adapter; "
+      "falling back to default randomizer."
+  )
+  return randomization_fn
 
 
 def main(argv):
@@ -366,6 +438,11 @@ def main(argv):
   # Save environment configuration
   with open(ckpt_path / "config.json", "w", encoding="utf-8") as fp:
     json.dump(env_cfg.to_dict(), fp, indent=4)
+  if _DR_CONFIG_PATH.value is not None:
+    with open(ckpt_path / "dr_config_path.txt", "w", encoding="utf-8") as fp:
+      fp.write(_DR_CONFIG_PATH.value + "\n")
+    with open(ckpt_path / "dr_experiment.txt", "w", encoding="utf-8") as fp:
+      fp.write((_DR_EXPERIMENT.value or "") + "\n")
 
   training_params = dict(ppo_params)
   if "network_factory" in training_params:
@@ -384,9 +461,7 @@ def main(argv):
     network_factory = network_fn
 
   if _DOMAIN_RANDOMIZATION.value:
-    training_params["randomization_fn"] = registry.get_domain_randomizer(
-        _ENV_NAME.value
-    )
+    training_params["randomization_fn"] = _get_randomization_fn(_ENV_NAME.value)
 
   num_eval_envs = ppo_params.get("num_eval_envs", 128)
 

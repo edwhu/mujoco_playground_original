@@ -330,7 +330,52 @@ class CubeRotateZAxisTouch(leap_hand_base.LeapHandEnv):
     return jp.sum(jp.square(joint_angles - self._default_pose))
 
 
-def domain_randomize(model: mjx.Model, rng: jax.Array):
+def domain_randomize(
+    model: mjx.Model, rng: jax.Array, dr_config: Optional[Dict[str, Any]] = None
+):
+  """Applies domain randomization with optional per-parameter ranges.
+
+  Keys in dr_config should map to {"min": float, "max": float}.
+  If a key is absent, the built-in defaults are used.
+  """
+  dr_config = dr_config or {}
+
+  def _range(key: str, default_min: float, default_max: float) -> tuple[float, float]:
+    cfg = dr_config.get(key)
+    if cfg is None:
+      return default_min, default_max
+    if not isinstance(cfg, dict):
+      raise ValueError(f"DR range for '{key}' must be an object with min/max.")
+    minval = float(cfg.get("min", default_min))
+    maxval = float(cfg.get("max", default_max))
+    if minval > maxval:
+      raise ValueError(
+          f"Invalid DR range for '{key}': min ({minval}) > max ({maxval})."
+      )
+    return minval, maxval
+
+  fingertip_friction_min, fingertip_friction_max = _range(
+      "geom_friction_fingertips", 0.5, 1.0
+  )
+  cube_inertia_scale_min, cube_inertia_scale_max = _range(
+      "cube_inertia_scale", 0.8, 1.2
+  )
+  cube_ipos_add_min, cube_ipos_add_max = _range("cube_ipos_add", -5e-3, 5e-3)
+  hand_qpos0_add_min, hand_qpos0_add_max = _range("hand_qpos0_add", -0.05, 0.05)
+  hand_frictionloss_scale_min, hand_frictionloss_scale_max = _range(
+      "hand_frictionloss_scale", 0.5, 2.0
+  )
+  hand_armature_scale_min, hand_armature_scale_max = _range(
+      "hand_armature_scale", 1.0, 1.05
+  )
+  hand_mass_scale_min, hand_mass_scale_max = _range("hand_mass_scale", 0.9, 1.1)
+  actuator_kp_scale_min, actuator_kp_scale_max = _range(
+      "actuator_kp_scale", 0.8, 1.2
+  )
+  hand_damping_scale_min, hand_damping_scale_max = _range(
+      "hand_damping_scale", 0.8, 1.2
+  )
+
   mj_model = CubeRotateZAxisTouch().mj_model
   cube_geom_id = mj_model.geom("cube").id
   cube_body_id = mj_model.body("cube").id
@@ -361,17 +406,26 @@ def domain_randomize(model: mjx.Model, rng: jax.Array):
   @jax.vmap
   def rand(rng):
     rng, key = jax.random.split(rng)
-    fingertip_friction = jax.random.uniform(key, (1,), minval=0.5, maxval=1.0)
+    fingertip_friction = jax.random.uniform(
+        key,
+        (1,),
+        minval=fingertip_friction_min,
+        maxval=fingertip_friction_max,
+    )
     geom_friction = model.geom_friction.at[fingertip_geom_ids, 0].set(
         fingertip_friction
     )
 
     rng, key1, key2 = jax.random.split(rng, 3)
-    dmass = jax.random.uniform(key1, minval=0.8, maxval=1.2)
+    dmass = jax.random.uniform(
+        key1, minval=cube_inertia_scale_min, maxval=cube_inertia_scale_max
+    )
     body_inertia = model.body_inertia.at[cube_body_id].set(
         model.body_inertia[cube_body_id] * dmass
     )
-    dpos = jax.random.uniform(key2, (3,), minval=-5e-3, maxval=5e-3)
+    dpos = jax.random.uniform(
+        key2, (3,), minval=cube_ipos_add_min, maxval=cube_ipos_add_max
+    )
     body_ipos = model.body_ipos.at[cube_body_id].set(
         model.body_ipos[cube_body_id] + dpos
     )
@@ -380,24 +434,38 @@ def domain_randomize(model: mjx.Model, rng: jax.Array):
     qpos0 = model.qpos0
     qpos0 = qpos0.at[hand_qids].set(
         qpos0[hand_qids]
-        + jax.random.uniform(key, shape=(16,), minval=-0.05, maxval=0.05)
+        + jax.random.uniform(
+            key,
+            shape=(16,),
+            minval=hand_qpos0_add_min,
+            maxval=hand_qpos0_add_max,
+        )
     )
 
     rng, key = jax.random.split(rng)
     frictionloss = model.dof_frictionloss[hand_qids] * jax.random.uniform(
-        key, shape=(16,), minval=0.5, maxval=2.0
+        key,
+        shape=(16,),
+        minval=hand_frictionloss_scale_min,
+        maxval=hand_frictionloss_scale_max,
     )
     dof_frictionloss = model.dof_frictionloss.at[hand_qids].set(frictionloss)
 
     rng, key = jax.random.split(rng)
     armature = model.dof_armature[hand_qids] * jax.random.uniform(
-        key, shape=(16,), minval=1.0, maxval=1.05
+        key,
+        shape=(16,),
+        minval=hand_armature_scale_min,
+        maxval=hand_armature_scale_max,
     )
     dof_armature = model.dof_armature.at[hand_qids].set(armature)
 
     rng, key = jax.random.split(rng)
     dmass = jax.random.uniform(
-        key, shape=(len(hand_body_ids),), minval=0.9, maxval=1.1
+        key,
+        shape=(len(hand_body_ids),),
+        minval=hand_mass_scale_min,
+        maxval=hand_mass_scale_max,
     )
     body_mass = model.body_mass.at[hand_body_ids].set(
         model.body_mass[hand_body_ids] * dmass
@@ -405,14 +473,20 @@ def domain_randomize(model: mjx.Model, rng: jax.Array):
 
     rng, key = jax.random.split(rng)
     kp = model.actuator_gainprm[:, 0] * jax.random.uniform(
-        key, (model.nu,), minval=0.8, maxval=1.2
+        key,
+        (model.nu,),
+        minval=actuator_kp_scale_min,
+        maxval=actuator_kp_scale_max,
     )
     actuator_gainprm = model.actuator_gainprm.at[:, 0].set(kp)
     actuator_biasprm = model.actuator_biasprm.at[:, 1].set(-kp)
 
     rng, key = jax.random.split(rng)
     kd = model.dof_damping[hand_qids] * jax.random.uniform(
-        key, (16,), minval=0.8, maxval=1.2
+        key,
+        (16,),
+        minval=hand_damping_scale_min,
+        maxval=hand_damping_scale_max,
     )
     dof_damping = model.dof_damping.at[hand_qids].set(kd)
 

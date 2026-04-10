@@ -15,6 +15,7 @@
 """Core classes for MuJoCo Playground."""
 
 import abc
+import os
 import subprocess
 import sys
 from typing import Any, Callable, Dict, List, Mapping, Optional, Sequence, Tuple, Union
@@ -94,7 +95,14 @@ def ensure_menagerie_exists() -> None:
   if not MENAGERIE_PATH.exists():
     print("mujoco_menagerie not found. Downloading...")
 
-    # Create external deps directory if it doesn't exist
+    # Recover from a broken external_deps symlink by replacing it with a dir.
+    if os.path.islink(str(EXTERNAL_DEPS_PATH)) and not EXTERNAL_DEPS_PATH.exists():
+      print(
+          f"Found broken symlink at {EXTERNAL_DEPS_PATH}; replacing with directory."
+      )
+      EXTERNAL_DEPS_PATH.unlink()
+
+    # Create external deps directory if it doesn't exist.
     EXTERNAL_DEPS_PATH.mkdir(exist_ok=True, parents=True)
 
     try:
