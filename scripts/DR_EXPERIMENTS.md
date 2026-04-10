@@ -1,6 +1,6 @@
 ## Domain randomization experiment sweep (Leap touch rotate)
 
-This folder contains **10 JSON DR configs** intended to help diagnose “delicate fingers” by sweeping only the DR knobs that are already supported (no code changes).
+This folder contains JSON DR configs intended to help diagnose “delicate fingers” by sweeping only the DR knobs that are already supported.
 
 ### How to run an experiment
 
@@ -20,6 +20,20 @@ Notes:
 - The “schema” / defaults reference is in `scripts/dr_leap_touch_objects_schema.json` (metadata only; not consumed by training).
 
 ### Experiment list
+
+### Suggested priority (most → least important, friction-first)
+
+1. **Hand geom friction (triplet)**: `scripts/dr_exp11_hand_geom_friction_0p8_0p05_0p0002.json`
+2. **Combo (aggressive fingers)**: `scripts/dr_exp10_combo_aggressive_fingers.json`
+3. **Fingertip sliding friction (high)**: `scripts/dr_exp03_fingertip_friction_high.json`
+4. **Fingertip sliding friction (medium)**: `scripts/dr_exp02_fingertip_friction_med.json`
+5. **Higher actuator gain (kp)**: `scripts/dr_exp06_high_actuator_kp.json`
+6. **Lower hand joint damping**: `scripts/dr_exp04_low_hand_damping.json`
+7. **Lower hand joint frictionloss**: `scripts/dr_exp05_low_hand_frictionloss.json`
+8. **Lower cube inertia**: `scripts/dr_exp09_low_cube_inertia.json`
+9. **Wider cube COM offset**: `scripts/dr_exp08_wide_cube_com_offset.json`
+10. **Higher hand armature** (control): `scripts/dr_exp07_high_hand_armature.json`
+11. **Baseline (explicit defaults)**: `scripts/dr_exp01_baseline_defaults.json`
 
 #### 1) Baseline (explicit defaults)
 - **File**: `scripts/dr_exp01_baseline_defaults.json`
