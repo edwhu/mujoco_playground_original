@@ -19,21 +19,22 @@ Notes:
 - Keys omitted from a given experiment fall back to the **hardcoded defaults** in the environment DR code.
 - The “schema” / defaults reference is in `scripts/dr_leap_touch_objects_schema.json` (metadata only; not consumed by training).
 
+**XML vs DR:** Palm and finger **link** collision friction (MuJoCo triplet) come from the compiled model defaults in `mujoco_playground/_src/manipulation/leap_hand/xmls/leap_rh_touch_mjx.xml` (class `leap_rh`). Fingertip pad geoms use the `tip` / `thumb_tip` classes there. None of the JSON files below set `hand_geom_friction_*`; optional overrides for those keys are documented in the schema if you add a custom JSON.
+
 ### Experiment list
 
 ### Suggested priority (most → least important, friction-first)
 
-1. **Hand geom friction (triplet)**: `scripts/dr_exp11_hand_geom_friction_0p8_0p05_0p0002.json`
-2. **Combo (aggressive fingers)**: `scripts/dr_exp10_combo_aggressive_fingers.json`
-3. **Fingertip sliding friction (high)**: `scripts/dr_exp03_fingertip_friction_high.json`
-4. **Fingertip sliding friction (medium)**: `scripts/dr_exp02_fingertip_friction_med.json`
-5. **Higher actuator gain (kp)**: `scripts/dr_exp06_high_actuator_kp.json`
-6. **Lower hand joint damping**: `scripts/dr_exp04_low_hand_damping.json`
-7. **Lower hand joint frictionloss**: `scripts/dr_exp05_low_hand_frictionloss.json`
-8. **Lower cube inertia**: `scripts/dr_exp09_low_cube_inertia.json`
-9. **Wider cube COM offset**: `scripts/dr_exp08_wide_cube_com_offset.json`
-10. **Higher hand armature** (control): `scripts/dr_exp07_high_hand_armature.json`
-11. **Baseline (explicit defaults)**: `scripts/dr_exp01_baseline_defaults.json`
+1. **Combo (aggressive fingers)**: `scripts/dr_exp10_combo_aggressive_fingers.json`
+2. **Fingertip sliding friction (high)**: `scripts/dr_exp03_fingertip_friction_high.json`
+3. **Fingertip sliding friction (medium)**: `scripts/dr_exp02_fingertip_friction_med.json`
+4. **Higher actuator gain (kp)**: `scripts/dr_exp06_high_actuator_kp.json`
+5. **Lower hand joint damping**: `scripts/dr_exp04_low_hand_damping.json`
+6. **Lower hand joint frictionloss**: `scripts/dr_exp05_low_hand_frictionloss.json`
+7. **Lower cube inertia**: `scripts/dr_exp09_low_cube_inertia.json`
+8. **Wider cube COM offset**: `scripts/dr_exp08_wide_cube_com_offset.json`
+9. **Higher hand armature** (control): `scripts/dr_exp07_high_hand_armature.json`
+10. **Baseline (explicit defaults)**: `scripts/dr_exp01_baseline_defaults.json`
 
 #### 1) Baseline (explicit defaults)
 - **File**: `scripts/dr_exp01_baseline_defaults.json`
@@ -97,12 +98,3 @@ Notes:
   - `hand_damping_scale`: \(U[0.3, 0.8]\)
   - `hand_frictionloss_scale`: \(U[0.2, 0.8]\)
   - `actuator_kp_scale`: \(U[1.2, 2.0]\)
-
-#### 11) Hand geom friction (fixed triplet)
-- **File**: `scripts/dr_exp11_hand_geom_friction_0p8_0p05_0p0002.json`
-- **What it does**: Overrides the Leap hand geoms’ MuJoCo friction triplet \([sliding, torsional, rolling]\) to match a real-world-ish tuning.
-- **Changes**:
-  - `hand_geom_friction_sliding`: \(U[0.8, 0.8]\)
-  - `hand_geom_friction_torsional`: \(U[0.05, 0.05]\)
-  - `hand_geom_friction_rolling`: \(U[0.0002, 0.0002]\)
-
